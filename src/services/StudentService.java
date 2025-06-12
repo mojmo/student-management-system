@@ -14,6 +14,8 @@ import models.Storage;
 import models.FileStorage;
 
 public class StudentService {
+
+    static Storage<Student> storage = new FileStorage<>();
     public static void addStudent(Scanner input) {
         System.out.println("--- Add New Student ---\n");
         String id, name = null, email = null, course = null;
@@ -30,7 +32,7 @@ public class StudentService {
                     name = null;
                 }
             } catch (Exception e) {
-                System.out.println("Error: " + e.getMessage());
+                System.out.println("Error: " + e.getMessage() + "\n");
             }
         }
 
@@ -42,7 +44,7 @@ public class StudentService {
                 Validator.isValidEmail(tempEmail);
                 email = tempEmail;
             } catch (InvalidEmailException e) {
-                System.out.println(e.getMessage());
+                System.out.println(e.getMessage() + "\n");
             }
         }
 
@@ -56,7 +58,7 @@ public class StudentService {
             } catch (NumberFormatException e) {
                 System.out.println("Age must be a number!");
             } catch (InvalidAgeException e) {
-                System.out.println(e.getMessage());
+                System.out.println(e.getMessage() + "\n");
             }
         }
 
@@ -65,7 +67,7 @@ public class StudentService {
             course = input.nextLine().trim();
             System.out.println();
             if (course.isEmpty()) {
-                System.out.println("Course cannot be empty!");
+                System.out.println("Course cannot be empty!\n");
                 course = null;
             }
         }
@@ -78,21 +80,46 @@ public class StudentService {
                 gpa = tempGpa;
                 System.out.println();
             } catch (NumberFormatException e) {
-                System.out.println("GPA must be a number!");
+                System.out.println("GPA must be a number!\n");
             } catch (InvalidGpaException e) {
-                System.out.println(e.getMessage());
+                System.out.println(e.getMessage() + "\n");
             }
 
         }
 
         id = "ST" + Generators.generateId();
         Student student = new Student(id, name, email, age, course, gpa);
-        Storage<Student> fileStorage = new FileStorage<>();
         Map<String, Object> map = new HashMap<>();
         map.put("model", "Student");
         map.put("obj", student);
         map.put("fileHeader", Student.FILE_HEADER);
-        fileStorage.add(map);
+        storage.add(map);
         System.out.println("\n***** Student added successfully! *****\n");
+    }
+
+    public static void getStudent(Scanner input) {
+        System.out.println("--- Search for Student ---\n");
+        System.out.print("Enter student ID: ");
+        String id = input.nextLine();
+        System.out.println();
+        String line = storage.get("Student", id);
+        String[] student = line.split(",");
+        if (line.isEmpty()) {
+            System.out.println("Student is not exist :(\n");
+        } else {
+            System.out.printf(
+                    "%-20s | %-30s | %-30s | %-5s | %-25s | %-5s%n",
+                    "ID", "NAME", "EMAIL", "AGE", "COURSE", "GPA"
+            );
+            System.out.printf(
+                    "%-20s | %-30s | %-30s | %-5s | %-25s | %-5s\n",
+                    student[0].trim(),         // id
+                    student[1].trim(),         // name
+                    student[2].trim(),         // email
+                    Integer.parseInt(student[3].trim()),  // age
+                    student[4].trim(),         // course
+                    Double.parseDouble(student[5].trim()) // gpa
+            );
+        }
     }
 }
