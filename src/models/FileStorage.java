@@ -1,5 +1,7 @@
 package models;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -45,9 +47,23 @@ public class FileStorage<T> implements Storage<T> {
     }
 
     @Override
-    public T get(String model, String id) {
-        // TODO
-        return null;
+    public String get(String model, String id) {
+        String fileName = "data/" + model + ".csv";
+        Path filePath = Paths.get(fileName).toAbsolutePath();
+        String line, objectLine = "";
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(filePath.toFile()))) {
+            while ((line = reader.readLine()) != null) {
+                if (line.contains(id)) {
+                    objectLine = line;
+                    break;
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+
+        return objectLine;
     }
     @Override
     public void remove(String model, String id) {
