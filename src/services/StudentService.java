@@ -1,6 +1,7 @@
 package services;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Scanner;
 import java.util.Map;
 
@@ -258,6 +259,27 @@ public class StudentService {
                 System.out.println("Error: " + e.getMessage() + "\n");
             }
 
+        }
+    }
+
+    public static void getAllStudents() {
+        System.out.println("--- Students List ---\n");
+        List<String> students = storage.getAll("Student");
+        if (students.isEmpty()) {
+            System.out.println("There are No Students :(\n");
+        } else {
+            for (String line : students) {
+                String[] student = line.split(",");
+                System.out.printf(
+                        "%-20s | %-30s | %-30s | %-5s | %-25s | %-5s\n",
+                        student[0].trim(),      // id
+                        student[1].trim(),      // name
+                        student[2].trim(),      // email
+                        student[3].trim(),      // age
+                        student[4].trim(),      // course
+                        student[5].trim()       // gpa
+                );
+            }
         }
     }
 }
