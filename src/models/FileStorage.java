@@ -11,6 +11,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class FileStorage<T> implements Storage<T> {
 
@@ -67,13 +68,22 @@ public class FileStorage<T> implements Storage<T> {
     }
     @Override
     public void remove(String model, String id) {
-        // TODO
-        System.out.println("Update " + model + " to a file...");
+        String fileName = "data/" + model + ".csv";
+        Path filePath = Paths.get(fileName).toAbsolutePath();
+        try {
+            List<String> lines = Files.readAllLines(Paths.get(filePath.toUri()));
+            List<String> updatedLines = lines.stream()
+                    .filter(line -> !line.startsWith(id + ","))
+                    .collect(Collectors.toList());
+            Files.write(Paths.get(filePath.toUri()), updatedLines);
+        } catch (IOException e) {
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 
     @Override
     public void update(String model, String id, T obj) {
         // TODO
-        System.out.println("Remove " + model + " to a file...");
+        System.out.println("Update " + model + " to a file...");
     }
 }
