@@ -4,12 +4,14 @@ public class Student {
     private String id;
     private String name;
     private String email;
+    private int age;
     private String course;
     private double gpa;
 
-    public Student (String id, String name, String email, String course, double gpa) {
+    public Student (String id, String name, String email, int age, String course, double gpa) {
         this.id = id;
         this.name = name;
+        this.age = age;
         this.email = email;
         this.course = course;
         this.gpa = gpa;
@@ -25,6 +27,10 @@ public class Student {
 
     public String getEmail() {
         return email;
+    }
+
+    public int getAge() {
+        return age;
     }
 
     public String getCourse() {
@@ -47,6 +53,10 @@ public class Student {
         this.email = email;
     }
 
+    public void setEmail(int age) {
+        this.age = age;
+    }
+
     public void setCourse(String course) {
         this.course = course;
     }
@@ -55,7 +65,8 @@ public class Student {
         this.gpa = gpa;
     }
 
+    @Override
     public String toString() {
-        return "Student [id=" + id + ", name=" + name + ", email=" + email + ", course=" + course + ", gpa=" + gpa + "]";
+        return id + "," + name + "," + email + "," + age + "," + course + "," + gpa;
     }
 }
