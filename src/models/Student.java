@@ -7,6 +7,7 @@ public class Student {
     private int age;
     private String course;
     private double gpa;
+    public static final String FILE_HEADER = "ID,NAME,EMAIL,AGE,COURSE,GPA";
 
     public Student (String id, String name, String email, int age, String course, double gpa) {
         this.id = id;
