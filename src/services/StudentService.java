@@ -122,4 +122,28 @@ public class StudentService {
             );
         }
     }
+
+    public static void removeStudent(Scanner input) {
+        System.out.println("--- Remove Student ---\n");
+        System.out.print("Enter student ID: ");
+        String id = input.nextLine();
+        System.out.println();
+        String line = storage.get("Student", id);
+
+        if (line.isEmpty()) {
+            System.out.println("Student is not exist :(\n");
+        } else {
+            System.out.print("Are you sure you want to remove this student [Y/N]: ");
+            try {
+                String choice = input.nextLine().trim().toUpperCase();
+                if (choice.equals("Y")) {
+                    storage.remove("Student", id);
+                    System.out.println("\n***** Student Removed successfully! *****\n");
+                }
+            } catch (Exception e) {
+                System.out.println("Error: " + e.getMessage() + "\n");
+            }
+        }
+
+    }
 }
