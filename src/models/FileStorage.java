@@ -100,4 +100,19 @@ public class FileStorage<T> implements Storage<T> {
             System.out.println("Error: " + e.getMessage());
         }
     }
+
+    @Override
+    public List<String> getAll(String model) {
+        String fileName = "data/" + model + ".csv";
+        Path filePath = Paths.get(fileName).toAbsolutePath();
+        List<String> lines = List.of();
+
+        try {
+            lines = Files.readAllLines(Paths.get(filePath.toUri()));
+        } catch (IOException e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+
+        return lines;
+    }
 }
