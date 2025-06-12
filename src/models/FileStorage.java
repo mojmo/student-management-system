@@ -83,7 +83,21 @@ public class FileStorage<T> implements Storage<T> {
 
     @Override
     public void update(String model, String id, T obj) {
-        // TODO
-        System.out.println("Update " + model + " to a file...");
+        String fileName = "data/" + model + ".csv";
+        Path filePath = Paths.get(fileName).toAbsolutePath();
+        try {
+            List<String> lines = Files.readAllLines(Paths.get(filePath.toUri()));
+            for (int i = 0; i < lines.size(); i++) {
+                String line = lines.get(i);
+                if (line.startsWith(id + ",")) {
+                    lines.set(i, obj.toString());
+                    System.out.println(lines.get(i));
+                    break;
+                }
+            }
+            Files.write(filePath, lines);
+        } catch (IOException e) {
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 }
