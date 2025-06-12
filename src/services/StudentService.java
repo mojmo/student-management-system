@@ -144,6 +144,120 @@ public class StudentService {
                 System.out.println("Error: " + e.getMessage() + "\n");
             }
         }
+    }
 
+    public static void updateStudent(Scanner input) {
+        System.out.println("--- Update Student ---\n");
+        System.out.print("Enter student ID: ");
+        String id = input.nextLine();
+        System.out.println();
+        String line = storage.get("Student", id);
+
+        if (line.isEmpty()) {
+            System.out.println("Student is not exist :(\n");
+        } else {
+            String[] student = line.split(",");
+            String oldName = student[1].trim(), oldEmail = student[2].trim(), oldCourse = student[4].trim();
+            int oldAge = Integer.parseInt(student[3].trim());
+            double oldGpa = Double.parseDouble(student[5].trim());
+
+            String newName = null, newEmail = null, newCourse = null;
+            int newAge = 0;
+            double newGpa = 5.0;
+
+            System.out.print("Press Enter to skip the field\n");
+
+            while (newName == null) {
+                System.out.print("Enter new name: ");
+                try {
+                    newName = input.nextLine().trim();
+                    System.out.println();
+                    if (newName.isEmpty()) {
+                        newName = oldName;
+                        break;
+                    }
+                } catch (Exception e) {
+                    System.out.println("Error: " + e.getMessage() + "\n");
+                }
+            }
+
+            while (newEmail == null) {
+                System.out.print("Enter new email: ");
+                try {
+                    String tempEmail = input.nextLine().trim();
+                    System.out.println();
+                    if (tempEmail.isEmpty()) {
+                        newEmail = oldEmail;
+                        break;
+                    }
+                    Validator.isValidEmail(tempEmail);
+                    newEmail = tempEmail;
+                } catch (Exception e) {
+                    System.out.println("Error: " + e.getMessage() + "\n");
+                }
+            }
+
+            while (newAge == 0) {
+                System.out.print("Enter your age: ");
+                try {
+                    String tempInput = input.nextLine();
+                    System.out.println();
+                    if (tempInput.isEmpty()) {
+                        newAge = oldAge;
+                        break;
+                    }
+                    int tempAge = Integer.parseInt(tempInput);
+                    Validator.isValidAge(tempAge);
+                    newAge = tempAge;
+                } catch (InvalidAgeException e) {
+                    System.out.println(e.getMessage() + "\n");
+                } catch (Exception e) {
+                    System.out.println("Error: " + e.getMessage() + "\n");
+                }
+            }
+
+            while (newCourse == null) {
+                System.out.print("Enter your course: ");
+                try {
+                    newCourse = input.nextLine().trim();
+                    System.out.println();
+                    if (!newCourse.isEmpty()) {
+                        newCourse = oldCourse;
+                        break;
+                    }
+                } catch (Exception e) {
+                    System.out.println("Error: " + e.getMessage() + "\n");
+                }
+            }
+
+            while (newGpa == 5.0) {
+                System.out.print("Enter your GPA: ");
+                try {
+                    String tempInput = input.nextLine();
+                    if (tempInput.isEmpty()) {
+                        newGpa = oldGpa;
+                        break;
+                    }
+                    double tempGpa = Double.parseDouble(tempInput);
+                    System.out.println();
+                    Validator.isValidGpa(tempGpa);
+                    newGpa = tempGpa;
+                } catch (InvalidGpaException e) {
+                    System.out.println(e.getMessage() + "\n");
+                } catch (Exception e) {
+                    System.out.println("Error: " + e.getMessage() + "\n");
+                }
+            }
+
+            try {
+                Student newStudent = new Student(id, newName, newEmail, newAge, newCourse, newGpa);
+                storage.update("Student", id, newStudent);
+                System.out.println("\n***** Student Updated successfully! *****\n");
+                System.out.println(newStudent);
+            } catch (Exception e) {
+                System.out.println("Error: " + e.getMessage() + "\n");
+            }
+
+        }
     }
 }
