@@ -1,6 +1,7 @@
 package services;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import utils.Generators;
 import utils.Validator;
@@ -334,5 +335,29 @@ public class StudentService {
                 .average()
                 .orElse(0.0);
         System.out.printf("Average Age: %.1f years\n", averageAge);
+
+        System.out.println("\nNumber of students in different GPA ranges:");
+        Map<String, Long> gpaRanges = students.stream()
+                .collect(Collectors.groupingBy(student -> {
+                    double gpa = student.getGpa();
+                    if (gpa < 2.0) return "(2.0 and below) Poor";
+                    if (gpa >= 2.0 && gpa < 3.0) return "(2.0 to 3.0) Average";
+                    if (gpa >= 3.0 && gpa < 3.5) return "(3.0 to 3.5) Good";
+                    if (gpa > 3.5) return "(3.5 and above) Excellent";
+                    return "Unknown";
+                }, Collectors.counting()));
+        gpaRanges.forEach((range, count) -> System.out.printf("%s: %d students\n", range, count));
+
+        System.out.println("\n--- Course-wise Distribution ---\n");
+        students.stream()
+                .collect(Collectors.groupingBy(Student::getCourse, Collectors.counting()))
+                .forEach((course, studentsInCourse) ->
+                    System.out.printf("%s: %d students\n", course, studentsInCourse));
+
+        System.out.println("\nAverage GPA by Course:");
+        students.stream()
+                .collect(Collectors.groupingBy(Student::getCourse, Collectors.averagingDouble(Student::getGpa)))
+                .forEach((course, gpa) ->
+                        System.out.printf("%s: %.2f\n", course, gpa));
     }
 }
