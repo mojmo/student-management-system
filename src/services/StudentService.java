@@ -330,9 +330,9 @@ public class StudentService {
         System.out.printf("Lowest GPA: %.2f (%s)\n", lowestGpaStudent.getGpa(), lowestGpaStudent.getName());
 
         double averageAge = students.stream()
-                .mapToDouble(Student::getAge)
+                .mapToInt(Student::getAge)
                 .average()
                 .orElse(0.0);
-        System.out.printf("Average Age: %.2f years\n", averageAge);
+        System.out.printf("Average Age: %.1f years\n", averageAge);
     }
 }
