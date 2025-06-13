@@ -1,9 +1,6 @@
 package services;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Scanner;
-import java.util.Map;
+import java.util.*;
 
 import utils.Generators;
 import utils.Validator;
@@ -17,6 +14,25 @@ import models.FileStorage;
 public class StudentService {
 
     static Storage<Student> storage = new FileStorage<>();
+
+    public static List<Student> deserialize(List<String> lines) {
+        List<Student> students = new ArrayList<>();
+        for (String line : lines) {
+            if (line.startsWith("ID")) continue;
+            String[] fields = line.split(",");
+            Student student = new Student(
+                    fields[0], // id
+                    fields[1], // name
+                    fields[2], // email
+                    Integer.parseInt(fields[3]), // age
+                    fields[4], // course
+                    Double.parseDouble(fields[5]) // gpa
+            );
+            students.add(student);
+        }
+        return students;
+    }
+
     public static void addStudent(Scanner input) {
         System.out.println("--- Add New Student ---\n");
         String id, name = null, email = null, course = null;
@@ -285,34 +301,38 @@ public class StudentService {
 
     public static void showStatistics() {
         System.out.println("--- Statistics ---\n");
-        List<String> students = storage.getAll("Student");
-        if (!students.isEmpty()) {
-            int studentCount = students.size() - 1;
-            System.out.println("Number of Students: " + studentCount);
-            double totalGpa = 0.0;
-            double maxGpa = -0.0;
-            double minGpa = 5.0;
-            int totalAge = 0;
-            for (String line : students) {
-                if (line.startsWith("ID")) continue;
-                String[] student = line.split(",");
-                totalGpa += Double.parseDouble(student[5].trim());
-                totalAge += Integer.parseInt(student[3].trim());
-                if (Double.parseDouble(student[5].trim()) > maxGpa) {
-                    maxGpa = Double.parseDouble(student[5].trim());
-                }
-                if (Double.parseDouble(student[5].trim()) < minGpa) {
-                    minGpa = Double.parseDouble(student[5].trim());
-                }
-            }
-            double averageGpa = totalGpa / studentCount;
-            double averageAge = (double) totalAge / studentCount;
-            System.out.printf("Average GPA: %.2f \n", averageGpa);
-            System.out.printf("Highest GPA: %.2f \n", maxGpa);
-            System.out.printf("Lowest GPA: %.2f \n", minGpa);
-            System.out.printf("Average Age: %.2f years\n", averageAge);
-        } else {
-            System.out.println("There are No Students :(\n");
+        List<String> studentsList = storage.getAll("Student");
+        List<Student> students = StudentService.deserialize(studentsList);
+
+        if (students.isEmpty()) {
+            System.out.println("No students available for statistics. :(");
+            return;
         }
+
+        System.out.println("Number of Students: " + students.size());
+
+        double averageGpa = students.stream()
+                .mapToDouble(Student::getGpa)
+                .average()
+                .orElse(0.0);
+        System.out.printf("Average GPA: %.2f\n", averageGpa);
+
+        Student highestGpaStudent = students.stream()
+                .max(Comparator.comparingDouble(Student::getGpa))
+                .orElse(null);
+        assert highestGpaStudent != null;
+        System.out.printf("Highest GPA: %.2f (%s)\n", highestGpaStudent.getGpa(), highestGpaStudent.getName());
+
+        Student lowestGpaStudent = students.stream()
+                .min(Comparator.comparingDouble(Student::getGpa))
+                .orElse(null);
+        assert lowestGpaStudent != null;
+        System.out.printf("Lowest GPA: %.2f (%s)\n", lowestGpaStudent.getGpa(), lowestGpaStudent.getName());
+
+        double averageAge = students.stream()
+                .mapToDouble(Student::getAge)
+                .average()
+                .orElse(0.0);
+        System.out.printf("Average Age: %.2f years\n", averageAge);
     }
 }
