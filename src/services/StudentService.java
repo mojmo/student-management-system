@@ -282,4 +282,37 @@ public class StudentService {
             }
         }
     }
+
+    public static void showStatistics() {
+        System.out.println("--- Statistics ---\n");
+        List<String> students = storage.getAll("Student");
+        if (!students.isEmpty()) {
+            int studentCount = students.size() - 1;
+            System.out.println("Number of Students: " + studentCount);
+            double totalGpa = 0.0;
+            double maxGpa = -0.0;
+            double minGpa = 5.0;
+            int totalAge = 0;
+            for (String line : students) {
+                if (line.startsWith("ID")) continue;
+                String[] student = line.split(",");
+                totalGpa += Double.parseDouble(student[5].trim());
+                totalAge += Integer.parseInt(student[3].trim());
+                if (Double.parseDouble(student[5].trim()) > maxGpa) {
+                    maxGpa = Double.parseDouble(student[5].trim());
+                }
+                if (Double.parseDouble(student[5].trim()) < minGpa) {
+                    minGpa = Double.parseDouble(student[5].trim());
+                }
+            }
+            double averageGpa = totalGpa / studentCount;
+            double averageAge = (double) totalAge / studentCount;
+            System.out.printf("Average GPA: %.2f \n", averageGpa);
+            System.out.printf("Highest GPA: %.2f \n", maxGpa);
+            System.out.printf("Lowest GPA: %.2f \n", minGpa);
+            System.out.printf("Average Age: %.2f years\n", averageAge);
+        } else {
+            System.out.println("There are No Students :(\n");
+        }
+    }
 }
