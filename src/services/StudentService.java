@@ -381,18 +381,24 @@ public class StudentService {
             document.addPage(page);
 
             try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
-                // Title
+                // ===== 1. Main Title =====
                 contentStream.setFont(PDType1Font.TIMES_BOLD, 16);
                 contentStream.beginText();
-                contentStream.newLineAtOffset(50, 700);
+                contentStream.newLineAtOffset(50, 750);
                 contentStream.showText("Students Report");
                 contentStream.endText();
 
-                // Column positions
-                float[] columns = {50, 150, 250, 400, 450, 550};
-                float currentY = 670;
+                // ===== 2. Students List Section =====
+                contentStream.setFont(PDType1Font.TIMES_BOLD, 14);
+                contentStream.beginText();
+                contentStream.newLineAtOffset(50, 720);
+                contentStream.showText("Students List");
+                contentStream.endText();
 
-                // Headers
+                float[] columns = {50, 150, 250, 400, 450, 550};
+                float currentY = 700;  // Adjusted starting Y position
+
+                // Table Headers
                 contentStream.setFont(PDType1Font.TIMES_BOLD, 10);
                 contentStream.beginText();
                 contentStream.newLineAtOffset(columns[0], currentY);
@@ -411,11 +417,11 @@ public class StudentService {
 
                 // Header line
                 contentStream.setLineWidth(0.5f);
-                contentStream.moveTo(columns[0], currentY - 5);  // Just below headers
+                contentStream.moveTo(columns[0], currentY - 5);
                 contentStream.lineTo(columns[5] + 50, currentY - 5);
                 contentStream.stroke();
 
-                // Student data (left-aligned)
+                // Student data
                 contentStream.setFont(PDType1Font.TIMES_ROMAN, 10);
                 currentY -= 20;
 
@@ -436,6 +442,120 @@ public class StudentService {
                     contentStream.endText();
                     currentY -= 20;
                 }
+
+                // ===== 3. Statistics Section =====
+                currentY -= 30; // Space before statistics
+
+                // Statistics Title
+                contentStream.setFont(PDType1Font.TIMES_BOLD, 14);
+                contentStream.beginText();
+                contentStream.newLineAtOffset(50, currentY);
+                contentStream.showText("Statistics");
+                contentStream.endText();
+                currentY -= 20;
+
+                // Basic Statistics
+                contentStream.setFont(PDType1Font.TIMES_ROMAN, 10);
+                contentStream.beginText();
+                contentStream.newLineAtOffset(50, currentY);
+                contentStream.showText("Number of Students: " + students.size());
+                currentY -= 15;
+
+                double averageGpa = students.stream()
+                        .mapToDouble(Student::getGpa)
+                        .average()
+                        .orElse(0.0);
+                contentStream.newLineAtOffset(0, -15);
+                contentStream.showText(String.format("Average GPA: %.2f", averageGpa));
+                currentY -= 15;
+
+                Student highestGpaStudent = students.stream()
+                        .max(Comparator.comparingDouble(Student::getGpa))
+                        .orElse(null);
+                contentStream.newLineAtOffset(0, -15);
+                assert highestGpaStudent != null;
+                contentStream.showText(String.format("Highest GPA: %.2f (%s)",
+                        highestGpaStudent.getGpa(), highestGpaStudent.getName()));
+                currentY -= 15;
+
+                Student lowestGpaStudent = students.stream()
+                        .min(Comparator.comparingDouble(Student::getGpa))
+                        .orElse(null);
+                contentStream.newLineAtOffset(0, -15);
+                assert lowestGpaStudent != null;
+                contentStream.showText(String.format("Lowest GPA: %.2f (%s)",
+                        lowestGpaStudent.getGpa(), lowestGpaStudent.getName()));
+                currentY -= 15;
+
+                double averageAge = students.stream()
+                        .mapToInt(Student::getAge)
+                        .average()
+                        .orElse(0.0);
+                contentStream.newLineAtOffset(0, -15);
+                contentStream.showText(String.format("Average Age: %.1f years", averageAge));
+                currentY -= 20;
+
+                // GPA Ranges
+                contentStream.newLineAtOffset(0, -15);
+                contentStream.showText("Number of students in different GPA ranges:");
+                currentY -= 15;
+
+                Map<String, Long> gpaRanges = students.stream()
+                        .collect(Collectors.groupingBy(student -> {
+                            double gpa = student.getGpa();
+                            if (gpa >= 3.5) return "(3.5 and above) Excellent";
+                            if (gpa >= 3.0) return "(3.0 to 3.5) Good";
+                            if (gpa >= 2.0) return "(2.0 to 3.0) Average";
+                            return "(2.0 and below) Poor";
+                        }, Collectors.counting()));
+
+                for (Map.Entry<String, Long> entry : gpaRanges.entrySet()) {
+                    contentStream.newLineAtOffset(0, -15);
+                    contentStream.showText(String.format("%s: %d students",
+                            entry.getKey(), entry.getValue()));
+                    currentY -= 15;
+                }
+                currentY -= 10;  // Space below GPA ranges
+
+                // Course-wise Distribution Title (with increased space above)
+                contentStream.setFont(PDType1Font.TIMES_BOLD, 12);
+                contentStream.newLineAtOffset(0, -30);  // Increased space above
+                contentStream.showText("Course-wise Distribution");
+                contentStream.endText();
+                currentY -= 5;  // Space below title
+
+                // Course Distribution
+                contentStream.setFont(PDType1Font.TIMES_ROMAN, 10);
+                contentStream.beginText();
+                contentStream.newLineAtOffset(50, currentY);
+
+                Map<String, Long> courseCounts = students.stream()
+                        .collect(Collectors.groupingBy(Student::getCourse, Collectors.counting()));
+
+                for (Map.Entry<String, Long> entry : courseCounts.entrySet()) {
+                    contentStream.newLineAtOffset(0, -15);
+                    contentStream.showText(String.format("%s: %d students",
+                            entry.getKey(), entry.getValue()));
+                    currentY -= 15;
+                }
+                currentY -= 10;  // Space below course counts
+
+                // Average GPA by Course
+                contentStream.newLineAtOffset(0, -15);
+                contentStream.showText("Average GPA by Course:");
+                currentY -= 15;
+
+                Map<String, Double> courseGpa = students.stream()
+                        .collect(Collectors.groupingBy(Student::getCourse,
+                                Collectors.averagingDouble(Student::getGpa)));
+
+                for (Map.Entry<String, Double> entry : courseGpa.entrySet()) {
+                    contentStream.newLineAtOffset(0, -15);
+                    contentStream.showText(String.format("%s: %.2f",
+                            entry.getKey(), entry.getValue()));
+                    currentY -= 15;
+                }
+                contentStream.endText();
             }
 
             // Save PDF
@@ -444,7 +564,7 @@ public class StudentService {
                 System.out.println();
             String filePath = directory.getPath() + "/students_report.pdf";
             document.save(filePath);
-            System.out.println("PDF File Exported Successfully to: " + filePath);
+            System.out.println("PDF exported successfully to: " + filePath);
         } catch (IOException e) {
             System.out.println("Error: " + e.getMessage());
         }
