@@ -245,7 +245,7 @@ public class StudentService {
                 try {
                     newCourse = input.nextLine().trim();
                     System.out.println();
-                    if (!newCourse.isEmpty()) {
+                    if (newCourse.isEmpty()) {
                         newCourse = oldCourse;
                         break;
                     }
