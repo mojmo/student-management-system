@@ -559,7 +559,7 @@ public class StudentService {
             }
 
             // Save PDF
-            File directory = new File(System.getProperty("user.dir") + "/reports");
+            File directory = new File(System.getProperty("user.dir") + "/src/main/resources/reports");
             if (directory.mkdirs())
                 System.out.println();
             String filePath = directory.getPath() + "/students_report.pdf";

@@ -23,7 +23,7 @@ public class FileStorage<T> implements Storage<T> {
         String fileHeader = map.get("fileHeader").toString();
 
         String line = obj.toString();
-        String fileName = "data/" + model + ".csv";
+        String fileName = "src/main/resources/data/" + model + ".csv";
         Path filePath = Paths.get(fileName).toAbsolutePath();
 
         try {
@@ -49,7 +49,7 @@ public class FileStorage<T> implements Storage<T> {
 
     @Override
     public String get(String model, String id) {
-        String fileName = "data/" + model + ".csv";
+        String fileName = "src/main/resources/data/" + model + ".csv";
         Path filePath = Paths.get(fileName).toAbsolutePath();
         String line, objectLine = "";
 
@@ -66,9 +66,10 @@ public class FileStorage<T> implements Storage<T> {
 
         return objectLine;
     }
+
     @Override
     public void remove(String model, String id) {
-        String fileName = "data/" + model + ".csv";
+        String fileName = "src/main/resources/data/" + model + ".csv";
         Path filePath = Paths.get(fileName).toAbsolutePath();
         try {
             List<String> lines = Files.readAllLines(Paths.get(filePath.toUri()));
@@ -83,7 +84,7 @@ public class FileStorage<T> implements Storage<T> {
 
     @Override
     public void update(String model, String id, T obj) {
-        String fileName = "data/" + model + ".csv";
+        String fileName = "src/main/resources/data/" + model + ".csv";
         Path filePath = Paths.get(fileName).toAbsolutePath();
         try {
             List<String> lines = Files.readAllLines(Paths.get(filePath.toUri()));
@@ -103,7 +104,7 @@ public class FileStorage<T> implements Storage<T> {
 
     @Override
     public List<String> getAll(String model) {
-        String fileName = "data/" + model + ".csv";
+        String fileName = "src/main/resources/data/" + model + ".csv";
         Path filePath = Paths.get(fileName).toAbsolutePath();
         List<String> lines = List.of();
 
