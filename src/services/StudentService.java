@@ -1,13 +1,19 @@
 package services;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
 
-import utils.Generators;
-import utils.Validator;
 import customexceptions.InvalidEmailException;
 import customexceptions.InvalidAgeException;
 import customexceptions.InvalidGpaException;
+import utils.Generators;
+import utils.Validator;
 import models.Student;
 import models.Storage;
 import models.FileStorage;
@@ -359,5 +365,88 @@ public class StudentService {
                 .collect(Collectors.groupingBy(Student::getCourse, Collectors.averagingDouble(Student::getGpa)))
                 .forEach((course, gpa) ->
                         System.out.printf("%s: %.2f\n", course, gpa));
+    }
+
+    public static void exportToPDF() {
+        List<String> studentsList = storage.getAll("Student");
+        List<Student> students = StudentService.deserialize(studentsList);
+
+        if (students.isEmpty()) {
+            System.out.println("No students available for export. :(");
+            return;
+        }
+
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage();
+            document.addPage(page);
+
+            try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
+                // Title
+                contentStream.setFont(PDType1Font.TIMES_BOLD, 16);
+                contentStream.beginText();
+                contentStream.newLineAtOffset(50, 700);
+                contentStream.showText("Students Report");
+                contentStream.endText();
+
+                // Column positions
+                float[] columns = {50, 150, 250, 400, 450, 550};
+                float currentY = 670;
+
+                // Headers
+                contentStream.setFont(PDType1Font.TIMES_BOLD, 10);
+                contentStream.beginText();
+                contentStream.newLineAtOffset(columns[0], currentY);
+                contentStream.showText("ID");
+                contentStream.newLineAtOffset(columns[1] - columns[0], 0);
+                contentStream.showText("NAME");
+                contentStream.newLineAtOffset(columns[2] - columns[1], 0);
+                contentStream.showText("EMAIL");
+                contentStream.newLineAtOffset(columns[3] - columns[2], 0);
+                contentStream.showText("AGE");
+                contentStream.newLineAtOffset(columns[4] - columns[3], 0);
+                contentStream.showText("COURSE");
+                contentStream.newLineAtOffset(columns[5] - columns[4], 0);
+                contentStream.showText("GPA");
+                contentStream.endText();
+
+                // Header line
+                contentStream.setLineWidth(0.5f);
+                contentStream.moveTo(columns[0], currentY - 5);  // Just below headers
+                contentStream.lineTo(columns[5] + 50, currentY - 5);
+                contentStream.stroke();
+
+                // Student data (left-aligned)
+                contentStream.setFont(PDType1Font.TIMES_ROMAN, 10);
+                currentY -= 20;
+
+                for (Student student : students) {
+                    contentStream.beginText();
+                    contentStream.newLineAtOffset(columns[0], currentY);
+                    contentStream.showText(student.getId());
+                    contentStream.newLineAtOffset(columns[1] - columns[0], 0);
+                    contentStream.showText(student.getName());
+                    contentStream.newLineAtOffset(columns[2] - columns[1], 0);
+                    contentStream.showText(student.getEmail());
+                    contentStream.newLineAtOffset(columns[3] - columns[2], 0);
+                    contentStream.showText(String.valueOf(student.getAge()));
+                    contentStream.newLineAtOffset(columns[4] - columns[3], 0);
+                    contentStream.showText(student.getCourse());
+                    contentStream.newLineAtOffset(columns[5] - columns[4], 0);
+                    contentStream.showText(String.format("%.2f", student.getGpa()));
+                    contentStream.endText();
+                    currentY -= 20;
+                }
+            }
+
+            // Save PDF
+            File directory = new File(System.getProperty("user.dir") + "/reports");
+            if (directory.mkdirs())
+                System.out.println();
+            String filePath = directory.getPath() + "/students_report.pdf";
+            document.save(filePath);
+            System.out.println("PDF File Exported Successfully to: " + filePath);
+        } catch (IOException e) {
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 }
