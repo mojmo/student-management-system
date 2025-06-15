@@ -68,7 +68,8 @@ public class StudentService {
                 Validator.isValidEmail(tempEmail);
                 email = tempEmail;
             } catch (InvalidEmailException e) {
-                System.out.println(e.getMessage() + "\n");
+                System.out.println("Error: " + e.getMessage());
+                System.out.println("Please try again.\n");
             }
         }
 
@@ -90,8 +91,7 @@ public class StudentService {
             System.out.print("Enter your course: ");
             course = input.nextLine().trim();
             System.out.println();
-            if (course.isEmpty()) {
-                System.out.println("Course cannot be empty!\n");
+            if (!Validator.isValidCourse(course)) {
                 course = null;
             }
         }
