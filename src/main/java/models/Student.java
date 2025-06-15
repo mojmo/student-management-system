@@ -54,7 +54,7 @@ public class Student {
         this.email = email;
     }
 
-    public void setEmail(int age) {
+    public void setAge(int age) {
         this.age = age;
     }
 
