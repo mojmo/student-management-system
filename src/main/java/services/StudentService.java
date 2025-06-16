@@ -21,6 +21,14 @@ import models.FileStorage;
 public class StudentService {
 
     static Storage<Student> storage = new FileStorage<>();
+    private static final String MODEL_NAME = "Student";
+
+    // Constants for PDF generation
+    private static final float[] TABLE_COLUMNS = {50, 150, 250, 400, 450, 550};
+    private static final int FONT_SIZE_TITLE = 16;
+    private static final int FONT_SIZE_SECTION = 14;
+    private static final int FONT_SIZE_TEXT = 10;
+    private static final String PDF_EXPORT_PATH = "src/main/resources/reports/students_report.pdf";
 
     public static List<Student> deserialize(List<String> lines) {
         List<Student> students = new ArrayList<>();
@@ -42,337 +50,442 @@ public class StudentService {
 
     public static void addStudent(Scanner input) {
         System.out.println("--- Add New Student ---\n");
-        String id, name = null, email = null, course = null;
-        int age = 0;
-        double gpa = 5.0;
+        
+        String name = promptForName(input);
+        String email = promptForEmail(input);
+        int age = promptForAge(input);
+        String course = promptForCourse(input);
+        double gpa = promptForGpa(input);
 
-        while (name == null) {
+        String id = "ST" + Generators.generateId();
+        Student student = new Student(id, name, email, age, course, gpa);
+        saveStudent(student);
+
+        System.out.println("\n***** Student Added Successfully! *****\n");
+    }
+
+    private static void saveStudent(Student student) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("model", MODEL_NAME);
+        map.put("obj", student);
+        map.put("fileHeader", Student.FILE_HEADER);
+        storage.add(map);
+    }
+
+    public static void getStudent(Scanner input) {
+        System.out.println("--- Search for Student ---\n");
+        String id = promptForId(input);
+
+        String line = storage.get(MODEL_NAME, id);
+        if (line.isEmpty()) {
+            System.out.println("Student does not exist :(\n");
+            return;
+        }
+
+        displayStudentHeader();;
+        displayStudentDetails(line);
+    }
+
+    private static void displayStudentHeader() {
+        System.out.printf(
+                "%-20s | %-30s | %-30s | %-5s | %-25s | %-5s%n",
+                "ID", "NAME", "EMAIL", "AGE", "COURSE", "GPA"
+        );
+    }
+
+    private static void displayStudentDetails(String line) {
+        String[] student = line.split(",");
+        System.out.printf(
+                "%-20s | %-30s | %-30s | %-5s | %-25s | %-5s\n",
+                student[0].trim(),         // id
+                student[1].trim(),         // name
+                student[2].trim(),         // email
+                student[3].trim(),         // age
+                student[4].trim(),         // course
+                student[5].trim()          // gpa
+        );
+    }
+
+    public static void removeStudent(Scanner input) {
+        System.out.println("--- Remove Student ---\n");
+        String id = promptForId(input);
+
+        String line = storage.get(MODEL_NAME, id);
+        if (line.isEmpty()) {
+            System.out.println("Student does not exist :(\n");
+            return;
+        }
+
+        System.out.print("Are you sure you want to remove this student? [Y/N]: ");
+        if (confirmAction(input)) {
+            storage.remove(MODEL_NAME, id);
+            System.out.println("\n***** Student Removed Successfully! *****\n");
+        }
+    }
+
+    private static boolean confirmAction(Scanner input) {
+        try {
+            String choice = input.nextLine().trim().toUpperCase();
+            return choice.equals("Y");
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage() + "\n");
+            return false;
+        }
+    }
+
+    public static void updateStudent(Scanner input) {
+        System.out.println("--- Update Student ---\n");
+        String id = promptForId(input);
+
+        String line = storage.get(MODEL_NAME, id);
+        if (line.isEmpty()) {
+            System.out.println("Student does not exist :(\n");
+            return;
+        }
+
+        Student oldStudent = parseStudentFromLine(line);
+        Student updatedStudent = getUpdatedStudentInfo(input, oldStudent);
+
+        try {
+            storage.update(MODEL_NAME, id, updatedStudent);
+            System.out.println("\n***** Student Updated Successfully! *****\n");
+            System.out.println(updatedStudent);
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage() + "\n");
+        }
+    }
+
+    private static Student parseStudentFromLine(String line) {
+        String[] student = line.split(",");
+        return new Student(
+            student[0].trim(),                       // id
+            student[1].trim(),                       // name
+            student[2].trim(),                       // email
+            Integer.parseInt(student[3].trim()),     // age
+            student[4].trim(),                       // course
+            Double.parseDouble(student[5].trim())    // gpa
+        );
+    }
+
+    private static Student getUpdatedStudentInfo(Scanner input, Student oldStudent) {
+        System.out.print("Press Enter to skip the field\n");
+
+        String newName = promptForUpdatedField(input, "name", oldStudent.getName());
+        String newEmail = promptForUpdatedEmail(input, oldStudent.getEmail());
+        int newAge = promptForUpdatedAge(input, oldStudent.getAge());
+        String newCourse = promptForUpdatedField(input, "course", oldStudent.getCourse());
+        double newGpa = promptForUpdatedGpa(input, oldStudent.getGpa());
+
+        return new Student(oldStudent.getId(), newName, newEmail, newAge, newCourse, newGpa);
+    }
+
+    public static void getAllStudents() {
+        System.out.println("--- Students List ---\n");
+        List<String> students = storage.getAll(MODEL_NAME);
+
+        if (students.isEmpty()) {
+            System.out.println("There are no Students :(\n");
+            return;
+        }
+
+        displayStudentHeader();
+        for (String line : students) {
+            if (line.startsWith("ID")) continue; // Skip header line
+            displayStudentDetails(line); 
+        }
+    }
+
+    // Helper methods for user input
+    private static String promptForName(Scanner input) {
+        while (true) {
             System.out.print("Enter your name: ");
             try {
-                name = input.nextLine().trim();
+                String name = input.nextLine().trim();
                 System.out.println();
-                if (name.isEmpty()) {
-                    System.out.println("Name cannot be empty!");
-                    name = null;
+                if (Validator.isNotEmpty(name, "Name")) {
+                    return name;
                 }
             } catch (Exception e) {
                 System.out.println("Error: " + e.getMessage() + "\n");
             }
         }
+    }
 
-        while (email == null) {
+    private static String promptForEmail(Scanner input) {
+        while (true) {
             System.out.print("Enter your email: ");
-            String tempEmail = input.nextLine().trim();
-            System.out.println();
             try {
-                Validator.isValidEmail(tempEmail);
-                email = tempEmail;
+                String email = input.nextLine().trim();
+                System.out.println();
+                Validator.isValidEmail(email);
+                return email;
             } catch (InvalidEmailException e) {
                 System.out.println("Error: " + e.getMessage());
                 System.out.println("Please try again.\n");
+            } catch (Exception e) {
+                System.out.println("Error: " + e.getMessage() + "\n");
             }
         }
+    }
 
-        while (age == 0) {
+    private static int promptForAge(Scanner input) {
+        while (true) {
             System.out.print("Enter your age: ");
             try {
-                int tempAge = Integer.parseInt(input.nextLine());
+                int age = Integer.parseInt(input.nextLine());
                 System.out.println();
-                Validator.isValidAge(tempAge);
-                age = tempAge;
+                Validator.isValidAge(age);
+                return age;
             } catch (NumberFormatException e) {
                 System.out.println("Age must be a number!");
             } catch (InvalidAgeException e) {
                 System.out.println(e.getMessage() + "\n");
             }
         }
+    }
 
-        while (course == null) {
+    private static String promptForCourse(Scanner input) {
+        while (true) {
             System.out.print("Enter your course: ");
-            course = input.nextLine().trim();
+            String course = input.nextLine().trim();
             System.out.println();
-            if (!Validator.isValidCourse(course)) {
-                course = null;
+            if (Validator.isValidCourse(course)) {
+                return course;
             }
         }
+    }
 
-        while (gpa == 5.0) {
-            System.out.print("Enter your GPA: ");
+    private static double promptForGpa(Scanner input) {
+        while (true) {
+            System.out.print("Enter our GPA: ");
             try {
-                double tempGpa = Double.parseDouble(input.nextLine());
-                Validator.isValidGpa(tempGpa);
-                gpa = tempGpa;
+                double gpa = Double.parseDouble(input.nextLine());
                 System.out.println();
+                Validator.isValidGpa(gpa);
+                return gpa;
             } catch (NumberFormatException e) {
                 System.out.println("GPA must be a number!\n");
             } catch (InvalidGpaException e) {
                 System.out.println(e.getMessage() + "\n");
             }
-
-        }
-
-        id = "ST" + Generators.generateId();
-        Student student = new Student(id, name, email, age, course, gpa);
-        Map<String, Object> map = new HashMap<>();
-        map.put("model", "Student");
-        map.put("obj", student);
-        map.put("fileHeader", Student.FILE_HEADER);
-        storage.add(map);
-        System.out.println("\n***** Student added successfully! *****\n");
-    }
-
-    public static void getStudent(Scanner input) {
-        System.out.println("--- Search for Student ---\n");
-        System.out.print("Enter student ID: ");
-        String id = input.nextLine();
-        System.out.println();
-        String line = storage.get("Student", id);
-        String[] student = line.split(",");
-        if (line.isEmpty()) {
-            System.out.println("Student is not exist :(\n");
-        } else {
-            System.out.printf(
-                    "%-20s | %-30s | %-30s | %-5s | %-25s | %-5s%n",
-                    "ID", "NAME", "EMAIL", "AGE", "COURSE", "GPA"
-            );
-            System.out.printf(
-                    "%-20s | %-30s | %-30s | %-5s | %-25s | %-5s\n",
-                    student[0].trim(),         // id
-                    student[1].trim(),         // name
-                    student[2].trim(),         // email
-                    Integer.parseInt(student[3].trim()),  // age
-                    student[4].trim(),         // course
-                    Double.parseDouble(student[5].trim()) // gpa
-            );
         }
     }
 
-    public static void removeStudent(Scanner input) {
-        System.out.println("--- Remove Student ---\n");
-        System.out.print("Enter student ID: ");
-        String id = input.nextLine();
-        System.out.println();
-        String line = storage.get("Student", id);
-
-        if (line.isEmpty()) {
-            System.out.println("Student is not exist :(\n");
-        } else {
-            System.out.print("Are you sure you want to remove this student [Y/N]: ");
+    private static String promptForId(Scanner input) {
+        while (true) {
+            System.out.print("Enter student ID:");
             try {
-                String choice = input.nextLine().trim().toUpperCase();
-                if (choice.equals("Y")) {
-                    storage.remove("Student", id);
-                    System.out.println("\n***** Student Removed successfully! *****\n");
+                String id = input.nextLine().trim();
+                System.out.println();
+
+                if (id.isEmpty()) {
+                    throw new IllegalArgumentException("ID cannot be empty.");
                 }
+                return id;
             } catch (Exception e) {
                 System.out.println("Error: " + e.getMessage() + "\n");
+                System.out.println("Please try again.\n");
             }
+            
         }
     }
 
-    public static void updateStudent(Scanner input) {
-        System.out.println("--- Update Student ---\n");
-        System.out.print("Enter student ID: ");
-        String id = input.nextLine();
+    private static String promptForUpdatedField(Scanner input, String fieldName, String oldValue) {
+        System.out.print("Enter new " + fieldName + " (or press Enter to keep current value: " + oldValue + "):");
+        String value = input.nextLine().trim();
         System.out.println();
-        String line = storage.get("Student", id);
+        return value.isEmpty() ? oldValue : value;
+    }
 
-        if (line.isEmpty()) {
-            System.out.println("Student is not exist :(\n");
-        } else {
-            String[] student = line.split(",");
-            String oldName = student[1].trim(), oldEmail = student[2].trim(), oldCourse = student[4].trim();
-            int oldAge = Integer.parseInt(student[3].trim());
-            double oldGpa = Double.parseDouble(student[5].trim());
+    private static String promptForUpdatedEmail(Scanner input, String oldEmail) {
+        while (true) {
+            System.out.print("Enter new email (or press Enter to keep current email: " + oldEmail + "): ");
+            String email = input.nextLine().trim();
+            System.out.println();
 
-            String newName = null, newEmail = null, newCourse = null;
-            int newAge = 0;
-            double newGpa = 5.0;
-
-            System.out.print("Press Enter to skip the field\n");
-
-            while (newName == null) {
-                System.out.print("Enter new name: ");
-                try {
-                    newName = input.nextLine().trim();
-                    System.out.println();
-                    if (newName.isEmpty()) {
-                        newName = oldName;
-                        break;
-                    }
-                } catch (Exception e) {
-                    System.out.println("Error: " + e.getMessage() + "\n");
-                }
-            }
-
-            while (newEmail == null) {
-                System.out.print("Enter new email: ");
-                try {
-                    String tempEmail = input.nextLine().trim();
-                    System.out.println();
-                    if (tempEmail.isEmpty()) {
-                        newEmail = oldEmail;
-                        break;
-                    }
-                    Validator.isValidEmail(tempEmail);
-                    newEmail = tempEmail;
-                } catch (Exception e) {
-                    System.out.println("Error: " + e.getMessage() + "\n");
-                }
-            }
-
-            while (newAge == 0) {
-                System.out.print("Enter your age: ");
-                try {
-                    String tempInput = input.nextLine();
-                    System.out.println();
-                    if (tempInput.isEmpty()) {
-                        newAge = oldAge;
-                        break;
-                    }
-                    int tempAge = Integer.parseInt(tempInput);
-                    Validator.isValidAge(tempAge);
-                    newAge = tempAge;
-                } catch (InvalidAgeException e) {
-                    System.out.println(e.getMessage() + "\n");
-                } catch (Exception e) {
-                    System.out.println("Error: " + e.getMessage() + "\n");
-                }
-            }
-
-            while (newCourse == null) {
-                System.out.print("Enter your course: ");
-                try {
-                    newCourse = input.nextLine().trim();
-                    System.out.println();
-                    if (newCourse.isEmpty()) {
-                        newCourse = oldCourse;
-                        break;
-                    }
-                } catch (Exception e) {
-                    System.out.println("Error: " + e.getMessage() + "\n");
-                }
-            }
-
-            while (newGpa == 5.0) {
-                System.out.print("Enter your GPA: ");
-                try {
-                    String tempInput = input.nextLine();
-                    if (tempInput.isEmpty()) {
-                        newGpa = oldGpa;
-                        break;
-                    }
-                    double tempGpa = Double.parseDouble(tempInput);
-                    System.out.println();
-                    Validator.isValidGpa(tempGpa);
-                    newGpa = tempGpa;
-                } catch (InvalidGpaException e) {
-                    System.out.println(e.getMessage() + "\n");
-                } catch (Exception e) {
-                    System.out.println("Error: " + e.getMessage() + "\n");
-                }
+            if (email.isEmpty()) {
+                return oldEmail;
             }
 
             try {
-                Student newStudent = new Student(id, newName, newEmail, newAge, newCourse, newGpa);
-                storage.update("Student", id, newStudent);
-                System.out.println("\n***** Student Updated successfully! *****\n");
-                System.out.println(newStudent);
-            } catch (Exception e) {
-                System.out.println("Error: " + e.getMessage() + "\n");
+                Validator.isValidEmail(email);
+                return email;
+            } catch (InvalidEmailException e) {
+                System.out.println("Error: " + e.getMessage());
+                System.out.println("Press Enter to keep old email or try again.\n");
             }
-
         }
     }
 
-    public static void getAllStudents() {
-        System.out.println("--- Students List ---\n");
-        List<String> students = storage.getAll("Student");
-        if (students.isEmpty()) {
-            System.out.println("There are No Students :(\n");
-        } else {
-            for (String line : students) {
-                String[] student = line.split(",");
-                System.out.printf(
-                        "%-20s | %-30s | %-30s | %-5s | %-25s | %-5s\n",
-                        student[0].trim(),      // id
-                        student[1].trim(),      // name
-                        student[2].trim(),      // email
-                        student[3].trim(),      // age
-                        student[4].trim(),      // course
-                        student[5].trim()       // gpa
-                );
+    private static int promptForUpdatedAge(Scanner input, int oldAge) {
+        while (true) {
+            System.out.print("Enter new age (or press Enter to keep current age: " + oldAge + "): ");
+            String ageInput = input.nextLine().trim();
+            System.out.println();
+
+            if (ageInput.isEmpty()) {
+                return oldAge;
+            }
+
+            try {
+                int age = Integer.parseInt(ageInput);
+                Validator.isValidAge(age);
+                return age;
+            } catch (NumberFormatException e) {
+                System.out.println("Age must be a number!");
+            } catch (InvalidAgeException e) {
+                System.out.println(e.getMessage() + "\n");
+                System.out.println("Press Enter to keep old age or try again.\n");
+            }
+        }
+    }
+
+    private static double promptForUpdatedGpa(Scanner input, double oldGpa) {
+        while (true) {
+            System.out.print("Enter new GPA (or press Enter to keep current GPA: " + oldGpa + "): ");
+            String gpaInput = input.nextLine().trim();
+            System.out.println();
+
+            if (gpaInput.isEmpty()) {
+                return oldGpa;
+            }
+
+            try {
+                double gpa = Double.parseDouble(gpaInput);
+                Validator.isValidGpa(gpa);
+                return gpa;
+            } catch (NumberFormatException e) {
+                System.out.println("GPA must be a number!");
+            } catch (InvalidGpaException e) {
+                System.out.println(e.getMessage());
+                System.out.println("Press Enter to keep old GPA or try again.\n");
             }
         }
     }
 
     public static void showStatistics() {
         System.out.println("--- Statistics ---\n");
-        List<String> studentsList = storage.getAll("Student");
-        List<Student> students = StudentService.deserialize(studentsList);
+        List<Student> students = getStudentsList();
 
         if (students.isEmpty()) {
-            System.out.println("No students available for statistics. :(");
+            System.out.println("No students available for statistics.\n");
             return;
         }
 
+        displayBasicStatistics(students);
+        displayGpaRangeStatistics(students);
+        displayCourseStatistics(students);
+    }
+
+    private static List<Student> getStudentsList() {
+        List<String> studentLines = storage.getAll(MODEL_NAME);
+        return StudentService.deserialize(studentLines);
+    }
+
+    private static void displayBasicStatistics(List<Student> students) {
         System.out.println("Number of Students: " + students.size());
 
-        double averageGpa = students.stream()
+        // Average GPA
+        double averageGpa = calculateAverageGpa(students);
+        System.out.printf("Average GPA: %.2f\n", averageGpa);
+
+        // Highest GPA
+        Student highestGpaStudent = findHighestGpaStudent(students);
+        System.out.printf(
+            "Highest GPA: %.2f (%s)\n",
+            highestGpaStudent.getGpa(),
+            highestGpaStudent.getName()
+        );
+
+        // Lowest GPA
+        Student lowestGpaStudent = findLowestGpaStudent(students);
+        System.out.printf(
+            "Lowest GPA: %.2f\n",
+            lowestGpaStudent.getGpa(),
+            lowestGpaStudent.getName()
+        );
+
+        // Average Age
+        double averageAge = calculateAverageAge(students);
+        System.out.printf("Average Age: %.1f years\n", averageAge);
+    }
+
+    private static double calculateAverageGpa(List<Student> students) {
+        return students.stream()
                 .mapToDouble(Student::getGpa)
                 .average()
                 .orElse(0.0);
-        System.out.printf("Average GPA: %.2f\n", averageGpa);
+    }
 
-        Student highestGpaStudent = students.stream()
+    private static Student findHighestGpaStudent(List<Student> students) {
+        return students.stream()
                 .max(Comparator.comparingDouble(Student::getGpa))
-                .orElse(null);
-        assert highestGpaStudent != null;
-        System.out.printf("Highest GPA: %.2f (%s)\n", highestGpaStudent.getGpa(), highestGpaStudent.getName());
+                .orElseThrow(() -> new RuntimeException("No students found"));
+    }
 
-        Student lowestGpaStudent = students.stream()
+    private static Student findLowestGpaStudent(List<Student> students) {
+        return students.stream()
                 .min(Comparator.comparingDouble(Student::getGpa))
-                .orElse(null);
-        assert lowestGpaStudent != null;
-        System.out.printf("Lowest GPA: %.2f (%s)\n", lowestGpaStudent.getGpa(), lowestGpaStudent.getName());
+                .orElseThrow(() -> new RuntimeException("No students found"));
+    }
 
-        double averageAge = students.stream()
+    private static double calculateAverageAge(List<Student> students) {
+        return students.stream()
                 .mapToInt(Student::getAge)
                 .average()
                 .orElse(0.0);
-        System.out.printf("Average Age: %.1f years\n", averageAge);
+    }
 
+    private static void displayGpaRangeStatistics(List<Student> students) {
         System.out.println("\nNumber of students in different GPA ranges:");
-        Map<String, Long> gpaRanges = students.stream()
+        Map<String, Long> gpaRanges = calculateGpaRanges(students);
+        gpaRanges.forEach((range, count) -> System.out.printf("%s: %d students\n", range, count));
+    }
+
+    private static Map<String, Long> calculateGpaRanges(List<Student> students) {
+        return students.stream()
                 .collect(Collectors.groupingBy(student -> {
                     double gpa = student.getGpa();
-                    if (gpa < 2.0) return "(2.0 and below) Poor";
-                    if (gpa >= 2.0 && gpa < 3.0) return "(2.0 to 3.0) Average";
-                    if (gpa >= 3.0 && gpa < 3.5) return "(3.0 to 3.5) Good";
-                    if (gpa > 3.5) return "(3.5 and above) Excellent";
-                    return "Unknown";
+                    if (gpa >= 3.5) return "Excellent (3.5 and above)";
+                    if (gpa >= 3.0) return "Good (3.0 to 3.5)";
+                    if (gpa >= 2.0) return "Average (2.0 to 3.0)";
+                    return "Poor (2.0 and below)";
                 }, Collectors.counting()));
-        gpaRanges.forEach((range, count) -> System.out.printf("%s: %d students\n", range, count));
+    }
 
+    private static void displayCourseStatistics(List<Student> students) {
         System.out.println("\n--- Course-wise Distribution ---\n");
-        students.stream()
-                .collect(Collectors.groupingBy(Student::getCourse, Collectors.counting()))
-                .forEach((course, studentsInCourse) ->
-                    System.out.printf("%s: %d students\n", course, studentsInCourse));
 
+        // Students per course
+        Map<String, Long> courseCounts = getStudentsPerCourse(students);
+        courseCounts.forEach((course, count) -> 
+            System.out.printf("%s: %d students\n", course, count)
+        );
+
+        // Average GPA by course
         System.out.println("\nAverage GPA by Course:");
-        students.stream()
-                .collect(Collectors.groupingBy(Student::getCourse, Collectors.averagingDouble(Student::getGpa)))
-                .forEach((course, gpa) ->
-                        System.out.printf("%s: %.2f\n", course, gpa));
+        Map<String, Double> courseGpa = getAverageGpaPerCourse(students);
+        courseGpa.forEach((course, gpa) -> 
+            System.out.printf("%s: %.2f\n", course, gpa)
+        );
+    }
+
+    private static Map<String, Long> getStudentsPerCourse(List<Student> students) {
+        return students.stream()
+                .collect(Collectors.groupingBy(Student::getCourse, Collectors.counting()));
+    }
+
+    public static Map<String, Double> getAverageGpaPerCourse(List<Student> students) {
+        return students.stream()
+                .collect(Collectors.groupingBy(Student::getCourse,
+                        Collectors.averagingDouble(Student::getGpa)));
     }
 
     public static void exportToPDF() {
-        List<String> studentsList = storage.getAll("Student");
-        List<Student> students = StudentService.deserialize(studentsList);
+        List<Student> students = getStudentsList();
 
         if (students.isEmpty()) {
-            System.out.println("No students available for export. :(");
+            System.out.println("No students available to export.");
             return;
         }
 
@@ -381,192 +494,188 @@ public class StudentService {
             document.addPage(page);
 
             try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
-                // ===== 1. Main Title =====
-                contentStream.setFont(PDType1Font.TIMES_BOLD, 16);
-                contentStream.beginText();
-                contentStream.newLineAtOffset(50, 750);
-                contentStream.showText("Students Report");
-                contentStream.endText();
-
-                // ===== 2. Students List Section =====
-                contentStream.setFont(PDType1Font.TIMES_BOLD, 14);
-                contentStream.beginText();
-                contentStream.newLineAtOffset(50, 720);
-                contentStream.showText("Students List");
-                contentStream.endText();
-
-                float[] columns = {50, 150, 250, 400, 450, 550};
-                float currentY = 700;  // Adjusted starting Y position
-
-                // Table Headers
-                contentStream.setFont(PDType1Font.TIMES_BOLD, 10);
-                contentStream.beginText();
-                contentStream.newLineAtOffset(columns[0], currentY);
-                contentStream.showText("ID");
-                contentStream.newLineAtOffset(columns[1] - columns[0], 0);
-                contentStream.showText("NAME");
-                contentStream.newLineAtOffset(columns[2] - columns[1], 0);
-                contentStream.showText("EMAIL");
-                contentStream.newLineAtOffset(columns[3] - columns[2], 0);
-                contentStream.showText("AGE");
-                contentStream.newLineAtOffset(columns[4] - columns[3], 0);
-                contentStream.showText("COURSE");
-                contentStream.newLineAtOffset(columns[5] - columns[4], 0);
-                contentStream.showText("GPA");
-                contentStream.endText();
-
-                // Header line
-                contentStream.setLineWidth(0.5f);
-                contentStream.moveTo(columns[0], currentY - 5);
-                contentStream.lineTo(columns[5] + 50, currentY - 5);
-                contentStream.stroke();
-
-                // Student data
-                contentStream.setFont(PDType1Font.TIMES_ROMAN, 10);
-                currentY -= 20;
-
-                for (Student student : students) {
-                    contentStream.beginText();
-                    contentStream.newLineAtOffset(columns[0], currentY);
-                    contentStream.showText(student.getId());
-                    contentStream.newLineAtOffset(columns[1] - columns[0], 0);
-                    contentStream.showText(student.getName());
-                    contentStream.newLineAtOffset(columns[2] - columns[1], 0);
-                    contentStream.showText(student.getEmail());
-                    contentStream.newLineAtOffset(columns[3] - columns[2], 0);
-                    contentStream.showText(String.valueOf(student.getAge()));
-                    contentStream.newLineAtOffset(columns[4] - columns[3], 0);
-                    contentStream.showText(student.getCourse());
-                    contentStream.newLineAtOffset(columns[5] - columns[4], 0);
-                    contentStream.showText(String.format("%.2f", student.getGpa()));
-                    contentStream.endText();
-                    currentY -= 20;
-                }
-
-                // ===== 3. Statistics Section =====
-                currentY -= 30; // Space before statistics
-
-                // Statistics Title
-                contentStream.setFont(PDType1Font.TIMES_BOLD, 14);
-                contentStream.beginText();
-                contentStream.newLineAtOffset(50, currentY);
-                contentStream.showText("Statistics");
-                contentStream.endText();
-                currentY -= 20;
-
-                // Basic Statistics
-                contentStream.setFont(PDType1Font.TIMES_ROMAN, 10);
-                contentStream.beginText();
-                contentStream.newLineAtOffset(50, currentY);
-                contentStream.showText("Number of Students: " + students.size());
-                currentY -= 15;
-
-                double averageGpa = students.stream()
-                        .mapToDouble(Student::getGpa)
-                        .average()
-                        .orElse(0.0);
-                contentStream.newLineAtOffset(0, -15);
-                contentStream.showText(String.format("Average GPA: %.2f", averageGpa));
-                currentY -= 15;
-
-                Student highestGpaStudent = students.stream()
-                        .max(Comparator.comparingDouble(Student::getGpa))
-                        .orElse(null);
-                contentStream.newLineAtOffset(0, -15);
-                assert highestGpaStudent != null;
-                contentStream.showText(String.format("Highest GPA: %.2f (%s)",
-                        highestGpaStudent.getGpa(), highestGpaStudent.getName()));
-                currentY -= 15;
-
-                Student lowestGpaStudent = students.stream()
-                        .min(Comparator.comparingDouble(Student::getGpa))
-                        .orElse(null);
-                contentStream.newLineAtOffset(0, -15);
-                assert lowestGpaStudent != null;
-                contentStream.showText(String.format("Lowest GPA: %.2f (%s)",
-                        lowestGpaStudent.getGpa(), lowestGpaStudent.getName()));
-                currentY -= 15;
-
-                double averageAge = students.stream()
-                        .mapToInt(Student::getAge)
-                        .average()
-                        .orElse(0.0);
-                contentStream.newLineAtOffset(0, -15);
-                contentStream.showText(String.format("Average Age: %.1f years", averageAge));
-                currentY -= 20;
-
-                // GPA Ranges
-                contentStream.newLineAtOffset(0, -15);
-                contentStream.showText("Number of students in different GPA ranges:");
-                currentY -= 15;
-
-                Map<String, Long> gpaRanges = students.stream()
-                        .collect(Collectors.groupingBy(student -> {
-                            double gpa = student.getGpa();
-                            if (gpa >= 3.5) return "(3.5 and above) Excellent";
-                            if (gpa >= 3.0) return "(3.0 to 3.5) Good";
-                            if (gpa >= 2.0) return "(2.0 to 3.0) Average";
-                            return "(2.0 and below) Poor";
-                        }, Collectors.counting()));
-
-                for (Map.Entry<String, Long> entry : gpaRanges.entrySet()) {
-                    contentStream.newLineAtOffset(0, -15);
-                    contentStream.showText(String.format("%s: %d students",
-                            entry.getKey(), entry.getValue()));
-                    currentY -= 15;
-                }
-                currentY -= 10;  // Space below GPA ranges
-
-                // Course-wise Distribution Title (with increased space above)
-                contentStream.setFont(PDType1Font.TIMES_BOLD, 12);
-                contentStream.newLineAtOffset(0, -30);  // Increased space above
-                contentStream.showText("Course-wise Distribution");
-                contentStream.endText();
-                currentY -= 5;  // Space below title
-
-                // Course Distribution
-                contentStream.setFont(PDType1Font.TIMES_ROMAN, 10);
-                contentStream.beginText();
-                contentStream.newLineAtOffset(50, currentY);
-
-                Map<String, Long> courseCounts = students.stream()
-                        .collect(Collectors.groupingBy(Student::getCourse, Collectors.counting()));
-
-                for (Map.Entry<String, Long> entry : courseCounts.entrySet()) {
-                    contentStream.newLineAtOffset(0, -15);
-                    contentStream.showText(String.format("%s: %d students",
-                            entry.getKey(), entry.getValue()));
-                    currentY -= 15;
-                }
-                currentY -= 10;  // Space below course counts
-
-                // Average GPA by Course
-                contentStream.newLineAtOffset(0, -15);
-                contentStream.showText("Average GPA by Course:");
-                currentY -= 15;
-
-                Map<String, Double> courseGpa = students.stream()
-                        .collect(Collectors.groupingBy(Student::getCourse,
-                                Collectors.averagingDouble(Student::getGpa)));
-
-                for (Map.Entry<String, Double> entry : courseGpa.entrySet()) {
-                    contentStream.newLineAtOffset(0, -15);
-                    contentStream.showText(String.format("%s: %.2f",
-                            entry.getKey(), entry.getValue()));
-                    currentY -= 15;
-                }
-                contentStream.endText();
+                // Start with initial Y position at the top of the page
+                float yPosition = 750;
+                
+                // Draw PDF content with dynamically updated Y position
+                yPosition = addPdfTitle(contentStream, yPosition);
+                yPosition = addPdfStudentTable(contentStream, students, yPosition);
+                addPdfStatistics(contentStream, students, yPosition);
             }
 
             // Save PDF
-            File directory = new File(System.getProperty("user.dir") + "/src/main/resources/reports");
-            if (directory.mkdirs())
-                System.out.println();
-            String filePath = directory.getPath() + "/students_report.pdf";
-            document.save(filePath);
-            System.out.println("PDF exported successfully to: " + filePath);
+            savePdfDocument(document);
         } catch (IOException e) {
-            System.out.println("Error: " + e.getMessage());
+            System.out.println("Error generating PDF: " + e.getMessage());
         }
+    }
+
+    private static float addPdfTitle(PDPageContentStream contentStream, float yPosition) throws IOException {
+        contentStream.setFont(PDType1Font.TIMES_BOLD, FONT_SIZE_TITLE);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(50, yPosition);
+        contentStream.showText("Students Report");
+        contentStream.endText();
+        
+        // Return the new Y position after adding title and some spacing
+        return yPosition - 30;
+    }
+
+    private static float addPdfStudentTable(PDPageContentStream contentStream, List<Student> students, float yPosition) throws IOException {
+        // Student section title
+        contentStream.setFont(PDType1Font.TIMES_BOLD, FONT_SIZE_SECTION);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(50, yPosition);
+        contentStream.showText("Students List");
+        contentStream.endText();
+
+        // Space after section title
+        yPosition -= 20;
+
+        // Draw table header
+        drawPdfTableHeader(contentStream, yPosition);
+        yPosition -= 20;
+
+        // Draw student rows and get updated Y position
+        return drawPdfTableRows(contentStream, students, yPosition);
+    }
+
+    private static void drawPdfTableHeader(PDPageContentStream contentStream, float yPosition) throws IOException {
+        contentStream.setFont(PDType1Font.TIMES_BOLD, FONT_SIZE_TEXT);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(TABLE_COLUMNS[0], yPosition);
+        contentStream.showText("ID");
+        contentStream.newLineAtOffset(TABLE_COLUMNS[1] - TABLE_COLUMNS[0], 0);
+        contentStream.showText("NAME");
+        contentStream.newLineAtOffset(TABLE_COLUMNS[2] - TABLE_COLUMNS[1], 0);
+        contentStream.showText("EMAIL");
+        contentStream.newLineAtOffset(TABLE_COLUMNS[3] - TABLE_COLUMNS[2], 0);
+        contentStream.showText("AGE");
+        contentStream.newLineAtOffset(TABLE_COLUMNS[4] - TABLE_COLUMNS[3], 0);
+        contentStream.showText("COURSE");
+        contentStream.newLineAtOffset(TABLE_COLUMNS[5] - TABLE_COLUMNS[4], 0);
+        contentStream.showText("GPA");
+        contentStream.endText();
+
+        // Header line
+        contentStream.setLineWidth(0.5f);
+        contentStream.moveTo(TABLE_COLUMNS[0], yPosition - 5);
+        contentStream.lineTo(TABLE_COLUMNS[5] + 50, yPosition - 5);
+        contentStream.stroke();
+    }
+
+    private static float drawPdfTableRows(PDPageContentStream contentStream, List<Student> students, float yPosition) throws IOException {
+        contentStream.setFont(PDType1Font.TIMES_ROMAN, FONT_SIZE_TEXT);
+        float rowHeight = 20;
+        int maxRowsPerPage = 25; // Prevents overflow to bottom of page
+        int rowCount = 0;
+
+        for (Student student : students) {
+            contentStream.beginText();
+            contentStream.newLineAtOffset(TABLE_COLUMNS[0], yPosition);
+            contentStream.showText(student.getId());
+            contentStream.newLineAtOffset(TABLE_COLUMNS[1] - TABLE_COLUMNS[0], 0);
+            contentStream.showText(student.getName());
+            contentStream.newLineAtOffset(TABLE_COLUMNS[2] - TABLE_COLUMNS[1], 0);
+            contentStream.showText(student.getEmail());
+            contentStream.newLineAtOffset(TABLE_COLUMNS[3] - TABLE_COLUMNS[2], 0);
+            contentStream.showText(String.valueOf(student.getAge()));
+            contentStream.newLineAtOffset(TABLE_COLUMNS[4] - TABLE_COLUMNS[3], 0);
+            contentStream.showText(student.getCourse());
+            contentStream.newLineAtOffset(TABLE_COLUMNS[5] - TABLE_COLUMNS[4], 0);
+            contentStream.showText(String.format("%.2f", student.getGpa()));
+            contentStream.endText();
+            
+            yPosition -= rowHeight;
+            rowCount++;
+            
+            // Check if we need a new page
+            if (rowCount >= maxRowsPerPage || yPosition < 100) {
+                // In a more advanced implementation, we would add a new page here
+                // and continue rendering the remaining students
+                break;
+            }
+        }
+        
+        // Add extra spacing after the table
+        return yPosition - 20;
+    }
+
+    private static void addPdfStatistics(PDPageContentStream contentStream, List<Student> students, float yPosition) throws IOException {
+        // Check if we need to start statistics on a new page
+        if (yPosition < 200) {
+            // In a more advanced implementation, we would add a new page here
+            // For now, we'll just abort adding statistics if there's not enough space
+            System.out.println("Not enough space for statistics. Consider implementing pagination.");
+            return;
+        }
+
+        // Statistics title
+        contentStream.setFont(PDType1Font.TIMES_BOLD, FONT_SIZE_SECTION);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(50, yPosition);
+        contentStream.showText("Statistics");
+        yPosition -= 20;
+
+        // Basic statistics
+        contentStream.setFont(PDType1Font.TIMES_BOLD, FONT_SIZE_TEXT);
+        
+        // Student count
+        contentStream.newLineAtOffset(0, -20);
+        contentStream.showText("Number of Students: " + students.size());
+        
+        // Average GPA
+        double averageGpa = calculateAverageGpa(students);
+        contentStream.newLineAtOffset(0, -15);
+        contentStream.showText(String.format("Average GPA: %.2f", averageGpa));
+        
+        // Highest GPA
+        Student highestGpaStudent = findHighestGpaStudent(students);
+        contentStream.newLineAtOffset(0, -15);
+        contentStream.showText(String.format(
+            "Highest GPA: %.2f (%s)",
+            highestGpaStudent.getGpa(),
+            highestGpaStudent.getName()
+        ));
+
+        // Lowest GPA
+        Student lowestGpaStudent = findLowestGpaStudent(students);
+        contentStream.newLineAtOffset(0, -15);
+        contentStream.showText(String.format(
+            "Lowest GPA: %.2f (%s)",
+            lowestGpaStudent.getGpa(),
+            lowestGpaStudent.getName()
+        ));
+
+        // Average Age
+        double averageAge = calculateAverageAge(students);
+        contentStream.newLineAtOffset(0, -15);
+        contentStream.showText(String.format("Average Age: %.1f years", averageAge));
+        
+        // GPA Ranges header
+        contentStream.newLineAtOffset(0, -20);
+        contentStream.showText("Number of students in different GPA ranges:");
+
+        // GPA Ranges data
+        Map<String, Long> gpaRanges = calculateGpaRanges(students);
+        for (Map.Entry<String, Long> entry : gpaRanges.entrySet()) {
+            contentStream.newLineAtOffset(0, -15);
+            contentStream.showText(String.format("%s: %d students",
+                entry.getKey(), entry.getValue()
+            ));
+        }
+        
+        contentStream.endText();
+    }
+    
+
+    private static void savePdfDocument(PDDocument document) throws IOException {
+        File directory = new File("src/main/resources/reports");
+        if (!directory.exists() && directory.mkdirs()) {
+            System.out.println("Created reports directory.");
+        }
+
+        document.save(PDF_EXPORT_PATH);
+        System.out.println("PDF exported successfully to: " + PDF_EXPORT_PATH);
     }
 }
