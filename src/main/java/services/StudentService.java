@@ -808,4 +808,109 @@ public class StudentService {
             return 0;
         }
     }
+
+    /**
+     * Updates multiple students at once using batch operation for better performance
+     * 
+     * @param studentMap Map of student IDs to updated student objects
+     * @return Number of students successfully updated
+     */
+    public static int updateStudentsBatch(Map<String, Student> studentMap) {
+        if (studentMap == null || studentMap.isEmpty()) {
+            return 0;
+        }
+        
+        try {
+            storage.batchUpdate(MODEL_NAME, studentMap);
+            return studentMap.size();
+        } catch (Exception e) {
+            System.err.println("Error during batch update: " + e.getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Updates GPAs for students in a specific course by a scaling factor
+     * 
+     * @param input Scanner for user input
+     */
+    public static void batchUpdateGpas(Scanner input) {
+        System.out.println("--- Batch GPA Update ---\n");
+        
+        List<Student> allStudents = getStudentsList();
+        if (allStudents.isEmpty()) {
+            System.out.println("No students available to update");
+            return;
+        }
+        
+        // Display available courses
+        Set<String> courses = allStudents.stream()
+                .map(Student::getCourse)
+                .collect(Collectors.toSet());
+        
+        System.out.println("Available courses:");
+        courses.forEach(course -> System.out.println("- " + course));
+        
+        // Get course to update
+        System.out.print("\nEnter course name for GPA adjustment: ");
+        String courseName = input.nextLine().trim();
+        
+        if (courseName.isEmpty() || !courses.contains(courseName)) {
+            System.out.println("Invalid or non-existent course name");
+            return;
+        }
+        
+        // Get adjustment factor
+        System.out.print("Enter GPA adjustment factor (e.g., 1.1 for 10% increase): ");
+        double factor;
+        try {
+            factor = Double.parseDouble(input.nextLine().trim());
+            if (factor <= 0) {
+                System.out.println("Adjustment factor must be positive");
+                return;
+            }
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid number format");
+            return;
+        }
+        
+        // Filter students by course and update GPAs
+        Map<String, Student> updatedStudents = new HashMap<>();
+        
+        for (Student student : allStudents) {
+            if (student.getCourse().equals(courseName)) {
+                double newGpa = student.getGpa() * factor;
+                // Cap at max GPA value
+                newGpa = Math.min(newGpa, 4.0);
+                
+                Student updatedStudent = new Student(
+                    student.getId(),
+                    student.getName(),
+                    student.getEmail(),
+                    student.getAge(),
+                    student.getCourse(),
+                    newGpa
+                );
+                
+                updatedStudents.put(student.getId(), updatedStudent);
+            }
+        }
+        
+        if (updatedStudents.isEmpty()) {
+            System.out.println("No students found in course: " + courseName);
+            return;
+        }
+        
+        // Confirm operation
+        System.out.println("\nThis will update GPAs for " + updatedStudents.size() + 
+                          " students in " + courseName + " course.");
+        System.out.print("Are you sure? [Y/N]: ");
+        if (confirmAction(input)) {
+            // Use batch update for better performance
+            int updatedCount = updateStudentsBatch(updatedStudents);
+            System.out.println("\n***** Successfully updated GPAs for " + updatedCount + " students *****");
+        } else {
+            System.out.println("\nOperation cancelled.");
+        }
+    }
 }
