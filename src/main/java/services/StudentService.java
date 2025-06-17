@@ -56,6 +56,16 @@ public class StudentService {
         
         String name = promptForName(input);
         String email = promptForEmail(input);
+        
+        // Validate email uniqueness
+        try {
+            validateEmailUniqueness(email);
+        } catch (IllegalArgumentException e) {
+            System.out.println("Error: " + e.getMessage());
+            System.out.println("Please try again with a different email.\n");
+            return;
+        }
+        
         int age = promptForAge(input);
         String course = promptForCourse(input);
         double gpa = promptForGpa(input);
@@ -174,7 +184,26 @@ public class StudentService {
         System.out.print("Press Enter to skip the field\n");
 
         String newName = promptForUpdatedField(input, "name", oldStudent.getName());
-        String newEmail = promptForUpdatedEmail(input, oldStudent.getEmail());
+        String newEmail;
+        
+        while (true) {
+            newEmail = promptForUpdatedEmail(input, oldStudent.getEmail());
+            
+            // If email hasn't changed, no need to validate uniqueness
+            if (newEmail.equals(oldStudent.getEmail())) {
+                break;
+            }
+            
+            // Validate email uniqueness, excluding current student
+            try {
+                validateEmailUniqueness(newEmail, oldStudent.getId());
+                break;
+            } catch (IllegalArgumentException e) {
+                System.out.println("Error: " + e.getMessage());
+                System.out.println("Please try again with a different email or press Enter to keep the current email.\n");
+            }
+        }
+        
         int newAge = promptForUpdatedAge(input, oldStudent.getAge());
         String newCourse = promptForUpdatedField(input, "course", oldStudent.getCourse());
         double newGpa = promptForUpdatedGpa(input, oldStudent.getGpa());
@@ -713,12 +742,13 @@ public class StudentService {
             
             List<Student> students = new ArrayList<>();
             List<String> errorLines = new ArrayList<>();
-            
+            Set<String> importedEmails = new HashSet<>(); // Track emails in current import
+    
             for (int i = startIndex; i < lines.size(); i++) {
                 String line = lines.get(i);
                 try {
                     String[] fields = line.split(",");
-                    if (fields.length < 6) {
+                    if (fields.length < 5) {
                         errorLines.add("Line " + (i+1) + ": Insufficient columns");
                         continue;
                     }
@@ -753,6 +783,23 @@ public class StudentService {
                         errorLines.add("Line " + (i+1) + ": Invalid email - " + email);
                         continue;
                     }
+                    
+                    // Check if email is already in current import batch
+                    if (importedEmails.contains(email.toLowerCase())) {
+                        errorLines.add("Line " + (i+1) + ": Duplicate email in import file - " + email);
+                        continue;
+                    }
+                    
+                    // Check if email exists in database
+                    try {
+                        validateEmailUniqueness(email);
+                    } catch (IllegalArgumentException e) {
+                        errorLines.add("Line " + (i+1) + ": " + e.getMessage());
+                        continue;
+                    }
+                    
+                    // Track this email for duplicates in the current import
+                    importedEmails.add(email.toLowerCase());
                     
                     Student student = new Student(id, name, email, age, course, gpa);
                     students.add(student);
@@ -800,9 +847,30 @@ public class StudentService {
             return 0;
         }
         
+        // Filter out students with duplicate emails
+        List<Student> validStudents = new ArrayList<>();
+        List<Student> invalidStudents = new ArrayList<>();
+        
+        for (Student student : students) {
+            try {
+                validateEmailUniqueness(student.getEmail());
+                validStudents.add(student);
+            } catch (IllegalArgumentException e) {
+                invalidStudents.add(student);
+            }
+        }
+        
+        if (!invalidStudents.isEmpty()) {
+            System.out.println("Warning: " + invalidStudents.size() + " students were not imported due to duplicate emails.");
+        }
+        
+        if (validStudents.isEmpty()) {
+            return 0;
+        }
+        
         try {
-            storage.batchAdd(MODEL_NAME, students, Student.FILE_HEADER);
-            return students.size();
+            storage.batchAdd(MODEL_NAME, validStudents, Student.FILE_HEADER);
+            return validStudents.size();
         } catch (Exception e) {
             System.err.println("Error during batch add: " + e.getMessage());
             return 0;
@@ -911,6 +979,23 @@ public class StudentService {
             System.out.println("\n***** Successfully updated GPAs for " + updatedCount + " students *****");
         } else {
             System.out.println("\nOperation cancelled.");
+        }
+    }
+    
+    /**
+     * Validates that the email is unique (not already used by another student)
+     * 
+     * @param email The email to check
+     * @param studentId Optional student ID to exclude (for updates)
+     * @throws IllegalArgumentException If email is already in use
+     */
+    private static void validateEmailUniqueness(String email, String... studentId) {
+        // Email is in column index 2 (0-based)
+        boolean emailExists = ((FileStorage<Student>)storage).valueExistsInColumn(
+                MODEL_NAME, email, 2, studentId);
+        
+        if (emailExists) {
+            throw new IllegalArgumentException("Email '" + email + "' is already registered. Please use a different email address.");
         }
     }
 }
