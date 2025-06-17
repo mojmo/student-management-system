@@ -2,6 +2,9 @@ package services;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -677,5 +680,132 @@ public class StudentService {
 
         document.save(PDF_EXPORT_PATH);
         System.out.println("PDF exported successfully to: " + PDF_EXPORT_PATH);
+    }
+
+    /**
+     * Imports students from a CSV file using batch add
+     * 
+     * @param input Scanner for user input
+     */
+    public static void importStudentsFromCSV(Scanner input) {
+        System.out.println("--- Import Students from CSV ---\n");
+        System.out.print("Enter the path to CSV file: ");
+        String filePath = input.nextLine().trim();
+        
+        if (filePath.isEmpty()) {
+            System.out.println("File path cannot be empty");
+            return;
+        }
+        
+        try {
+            List<String> lines = Files.readAllLines(Paths.get(filePath), StandardCharsets.UTF_8);
+            
+            // Skip header if exists
+            if (lines.isEmpty()) {
+                System.out.println("File is empty");
+                return;
+            }
+            
+            boolean hasHeader = lines.get(0).startsWith("ID") || 
+                                lines.get(0).toLowerCase().contains("name") ||
+                                lines.get(0).toLowerCase().contains("email");
+            int startIndex = hasHeader ? 1 : 0;
+            
+            List<Student> students = new ArrayList<>();
+            List<String> errorLines = new ArrayList<>();
+            
+            for (int i = startIndex; i < lines.size(); i++) {
+                String line = lines.get(i);
+                try {
+                    String[] fields = line.split(",");
+                    if (fields.length < 6) {
+                        errorLines.add("Line " + (i+1) + ": Insufficient columns");
+                        continue;
+                    }
+                    
+                    // Generate new ID for each student
+                    String id = "ST" + Generators.generateId();
+                    String name = fields[0].trim();
+                    String email = fields[1].trim();
+                    int age;
+                    String course = fields[3].trim();
+                    double gpa;
+                    
+                    try {
+                        age = Integer.parseInt(fields[2].trim());
+                        Validator.isValidAge(age);
+                    } catch (Exception e) {
+                        errorLines.add("Line " + (i+1) + ": Invalid age - " + fields[2]);
+                        continue;
+                    }
+                    
+                    try {
+                        gpa = Double.parseDouble(fields[4].trim());
+                        Validator.isValidGpa(gpa);
+                    } catch (Exception e) {
+                        errorLines.add("Line " + (i+1) + ": Invalid GPA - " + fields[4]);
+                        continue;
+                    }
+                    
+                    try {
+                        Validator.isValidEmail(email);
+                    } catch (InvalidEmailException e) {
+                        errorLines.add("Line " + (i+1) + ": Invalid email - " + email);
+                        continue;
+                    }
+                    
+                    Student student = new Student(id, name, email, age, course, gpa);
+                    students.add(student);
+                    
+                } catch (Exception e) {
+                    errorLines.add("Line " + (i+1) + ": " + e.getMessage());
+                }
+            }
+            
+            if (students.isEmpty()) {
+                System.out.println("No valid students found for import");
+                return;
+            }
+            
+            // Use batch add for better performance
+            int addedCount = addStudentsBatch(students);
+            
+            System.out.println("\n***** Import Summary *****");
+            System.out.println("Students successfully imported: " + addedCount);
+            
+            if (!errorLines.isEmpty()) {
+                System.out.println("Errors encountered: " + errorLines.size());
+                System.out.println("First 5 errors:");
+                for (int i = 0; i < Math.min(5, errorLines.size()); i++) {
+                    System.out.println("  - " + errorLines.get(i));
+                }
+                
+                if (errorLines.size() > 5) {
+                    System.out.println("  ... and " + (errorLines.size() - 5) + " more errors");
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Error reading file: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Adds multiple students at once using batch operation for better performance
+     * 
+     * @param students List of students to add
+     * @return Number of students successfully added
+     */
+    public static int addStudentsBatch(List<Student> students) {
+        if (students == null || students.isEmpty()) {
+            return 0;
+        }
+        
+        try {
+            storage.batchAdd(MODEL_NAME, students, Student.FILE_HEADER);
+            return students.size();
+        } catch (Exception e) {
+            System.err.println("Error during batch add: " + e.getMessage());
+            return 0;
+        }
     }
 }
