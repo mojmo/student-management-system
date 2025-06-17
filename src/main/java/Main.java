@@ -1,11 +1,16 @@
 import java.util.Scanner;
 
 import services.StudentService;
+import utils.AppConfig;
 
 public class Main {
     static Scanner input = new Scanner(System.in);
 
     public static void main(String[] args) {
+        // Initialize app configuration
+        AppConfig config = AppConfig.getInstance();
+        config.ensureDirectoriesExist();
+
         int currentOperation;
         char exit = 'n';
 
