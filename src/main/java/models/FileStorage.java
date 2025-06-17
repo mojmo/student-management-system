@@ -265,4 +265,49 @@ public class FileStorage<T> implements Storage<T> {
             throw new StorageException("Error during batch update operation", e);
         }
     }
+
+    /**
+     * Checks if a value already exists in a specific column
+     *
+     * @param model The model name
+     * @param columnValue The value to check
+     * @param columnIndex The column index to check (0-based)
+     * @param excludeId Optional ID to exclude from the check (for updates)
+     * @return true if the value exists, false otherwise
+     */
+    public boolean valueExistsInColumn(String model, String columnValue, int columnIndex, String... excludeId) {
+        Path filePath = getFilePath(model);
+        if (!Files.exists(filePath)) {
+            return false;
+        }
+        
+        try (BufferedReader reader = Files.newBufferedReader(filePath, StandardCharsets.UTF_8)) {
+            String line;
+            boolean firstLine = true;
+            
+            while ((line = reader.readLine()) != null) {
+                // Skip header line
+                if (firstLine) {
+                    firstLine = false;
+                    continue;
+                }
+                
+                String[] columns = line.split(",");
+                if (columns.length > columnIndex) {
+                    // Check if this row should be excluded (for update operations)
+                    if (excludeId.length > 0 && columns[0].equals(excludeId[0])) {
+                        continue;
+                    }
+                    
+                    // Compare the column value (trimmed)
+                    if (columns[columnIndex].trim().equalsIgnoreCase(columnValue.trim())) {
+                        return true; // Value exists
+                    }
+                }
+            }
+            return false; // Value not found
+        } catch (IOException e) {
+            throw new StorageException("Error checking if value exists: " + columnValue, e);
+        }
+    }
 }
