@@ -31,10 +31,12 @@ public class Main {
                 case 5 -> StudentService.getAllStudents();
                 case 6 -> StudentService.showStatistics();
                 case 7 -> StudentService.exportToPDF();
-                case 8 -> exit = 'y';
+                case 8 -> StudentService.importStudentsFromCSV(input);
+                case 9 -> StudentService.batchUpdateGpas(input);
+                case 0 -> exit = 'y';
                 default -> System.out.println("Invalid operation. Please try again.\n");
             }
-        } while (exit == 'n') ;
+        } while (exit == 'n');
 
         input.close();
     }
@@ -51,7 +53,9 @@ public class Main {
                 5. List All Students
                 6. Show Statistics
                 7. Export to PDF
-                8. Save & Exit
+                8. Import Students from CSV
+                9. Batch Update GPAs
+                0. Save & Exit
                 """);
 
         System.out.print("Select an operation: ");
